@@ -3,11 +3,6 @@ using PlotRecipes
 using Gurobi
 using Graphs
 
-
-#for i in sort(collect(keys(citiesDict)))
-
-#posição de cada ponto a ser visitado
-
     citiesDict = Dict{Int,Any}()
     citiesDict[1]  = (11003.611100, 42102.500000)
     citiesDict[2]  = (11108.611100, 42373.888900)
@@ -123,38 +118,13 @@ end # Function
     edgeOrigin = []
     edgeDest = []
     for i in keys(citiesDict)
-    for j in keys(citiesDict)
-    if i != j && getvalue(x[i, j]) > 0.01
-    append!(edgeOrigin, i)
-    append!(edgeDest, j)
-    end
-    end
+        for j in keys(citiesDict)
+            if i != j && getvalue(x[i, j]) > 0.01
+                append!(edgeOrigin, i)
+                append!(edgeDest, j)
+            end
+        end
     end
     graphplot(edgeOrigin, edgeDest, names=1:nCities,
     x=posX, y=posY, fontsize=10, m=:white, l=:black)
 
-# status = solve(model)
-
-# if status == :Optimal
-#     edgeOrigin = []
-#     edgeDest = []
-
-#     for i in keys(citiesDict)
-#         for j in keys(citiesDict)
-#             if i != j && getvalue(x[i,j]) > 0.99
-#                 append!(edgeOrigin, i)
-#                 append!(edgeDest, j)
-#             end
-#         end
-#     end
-
-    # display(
-    #     graphplot(
-    #           edgeOrigin, edgeDest, names=1:nCities,
-    #           x=posX, y=posY, fontsize=12,
-    #           m=:white, l=:black
-    #            )
-    #     )
-# else
-#     println("optimal solution not found")
-# end
