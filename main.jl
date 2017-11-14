@@ -1,11 +1,7 @@
 using JuMP
 using PlotRecipes
 using Gurobi
-
-
-#for i in sort(collect(keys(citiesDict)))
-
-#posição de cada ponto a ser visitado
+using Graphs
 
     citiesDict = Dict{Int,Any}()
     citiesDict[1]  = (11003.611100, 42102.500000)
@@ -47,8 +43,7 @@ using Gurobi
     citiesDict[37] = (12421.666700, 42895.555600)
     citiesDict[38] = (12645.000000, 42973.333300)
 
-nCities= length(citiesDict)     
-
+    nCities= length(citiesDict)     
 #matriz que armazena distâncias entre pontos
 c = zeros(nCities,nCities)
 
@@ -58,6 +53,7 @@ for i in sort(collect(keys(citiesDict)))
     posI = citiesDict[i]
     for j in sort(collect(keys(citiesDict)))
         posJ = citiesDict[j]
+        #calcula distância euclidiana
         c[i,j] = ((posI[1]-posJ[1])^2 + 
               (posI[2]-posJ[2])^2)^0.5
     end
@@ -79,30 +75,56 @@ end
 
 for j in 1:nCities
     @constraint(model, sum(x[i,j] for i in 1: nCities if i != j) == 1)
-end
+	end
 
-status = solve(model)
+	function lazyConstraintsCallback(cb)
+	    g = simple_graph(nCities, is_directed=false)
 
-if status == :Optimal
-    edgeOrigin = []
-    edgeDest = []
+	    for i in 1:nCities, j in 1:nCities
+		if i!=j
+		    if getvalue(x[i,j]) > 0.01
+			add_edge!(g,i,j) #constroi arestas
+		    end
+		end
+	    end
 
-    for i in keys(citiesDict)
-        for j in keys(citiesDict)
-            if i != j && getvalue(x[i,j]) > 0.99
-                append!(edgeOrigin, i)
-                append!(edgeDest, j)
-            end
-        end
+	    cc = connected_components(g) #encontra componentes conectados
+
+	    if length(cc) > 1
+	    # Caso só haja uma componente conexa não há subciclo e
+	    # não se adiciona nenhuma restrição
+	    minTour = sort(cc, by=length)[1]
+	    subtourLhs = AffExpr()
+	    # Encontrando arestas do subciclo
+	    for i in minTour
+		for j in minTour
+		    if i != j && getvalue(x[i, j]) > 0.01
+			subtourLhs += x[i, j]
+		    end
+		end
+	    end
+	    # Adicionando a restrição
+		@lazyconstraint(cb,subtourLhs<=length(minTour)-1)
     end
+end # Function
 
-    display(
-        graphplot(
-              edgeOrigin, edgeDest, names=1:nCities,
-              x=posX, y=posY, fontsize=12,
-              m=:white, l=:black
-               )
-        )
-else
-    println("optimal solution not found")
+addlazycallback(model, lazyConstraintsCallback)
+
+solve(model)
+
+edgeOrigin = []
+edgeDest = []
+
+for i in keys(citiesDict)
+	for j in keys(citiesDict)
+		if i != j && getvalue(x[i, j]) > 0.01
+			append!(edgeOrigin, i)
+			append!(edgeDest, j)
+		end
+	end
 end
+    graphplot(edgeOrigin, edgeDest, names=1:nCities,
+    x=posX, y=posY, fontsize=11, m=:white, l=:black)
+
+
+
