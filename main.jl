@@ -58,7 +58,7 @@ for i in sort(collect(keys(citiesDict)))
         #calcula distância euclidiana
         c[i,j] = ((posI[1]-posJ[1])^2 + 
               (posI[2]-posJ[2])^2)^0.5
-        end
+    end
     append!(posX, posI[1])
     append!(posY, posI[2])
 end
