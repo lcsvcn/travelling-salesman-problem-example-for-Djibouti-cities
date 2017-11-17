@@ -3,6 +3,7 @@ using PlotRecipes
 using Gurobi
 using Graphs
 
+    #coordenadas das cidades de Djibouti, advindas do arquivo: http://www.math.uwaterloo.ca/tsp/world/dj38.tsp
     citiesDict = Dict{Int,Any}()
     citiesDict[1]  = (11003.611100, 42102.500000)
     citiesDict[2]  = (11108.611100, 42373.888900)
@@ -43,11 +44,12 @@ using Graphs
     citiesDict[37] = (12421.666700, 42895.555600)
     citiesDict[38] = (12645.000000, 42973.333300)
 
-    nCities= length(citiesDict)     
+nCities= length(citiesDict)     
 #matriz que armazena distâncias entre pontos
 c = zeros(nCities,nCities)
 
 posX, posY = [],[]
+
 
 for i in sort(collect(keys(citiesDict)))
     posI = citiesDict[i]
@@ -75,56 +77,62 @@ end
 
 for j in 1:nCities
     @constraint(model, sum(x[i,j] for i in 1: nCities if i != j) == 1)
+end
+
+    function lazyConstraintsCallback(cb)
+        g = simple_graph(nCities, is_directed=false)
+        for i in 1:nCities, j in 1:nCities
+   	     if i!=j
+        	    if getvalue(x[i,j]) > 0.01
+		            add_edge!(g,i,j) #constroi arestas
+	            end
+             end
 	end
 
-	function lazyConstraintsCallback(cb)
-	    g = simple_graph(nCities, is_directed=false)
-
-	    for i in 1:nCities, j in 1:nCities
-		if i!=j
-		    if getvalue(x[i,j]) > 0.01
-			add_edge!(g,i,j) #constroi arestas
-		    end
-		end
-	    end
-
-	    cc = connected_components(g) #encontra componentes conectados
-
-	    if length(cc) > 1
-	    # Caso só haja uma componente conexa não há subciclo e
-	    # não se adiciona nenhuma restrição
-	    minTour = sort(cc, by=length)[1]
-	    subtourLhs = AffExpr()
-	    # Encontrando arestas do subciclo
-	    for i in minTour
-		for j in minTour
-		    if i != j && getvalue(x[i, j]) > 0.01
-			subtourLhs += x[i, j]
-		    end
-		end
-	    end
-	    # Adicionando a restrição
-		@lazyconstraint(cb,subtourLhs<=length(minTour)-1)
-    end
-end # Function
+        cc = connected_components(g) #encontra componentes conectados
+        if length(cc) > 1
+        # Caso só haja uma componente conexa não há subciclo e
+        # não se adiciona nenhuma restrição
+        minTour = sort(cc, by=length)[1]
+        subtourLhs = AffExpr()
+        # Encontrando arestas do subciclo
+        for i in minTour
+        	for j in minTour
+	            if i != j && getvalue(x[i, j]) > 0.01
+		            subtourLhs += x[i, j]
+	            end
+        	end
+        end
+        # Adicionando a restrição
+        @lazyconstraint(cb,subtourLhs<=length(minTour)-1)
+	end
+end 
 
 addlazycallback(model, lazyConstraintsCallback)
+status = solve(model)
 
-solve(model)
+
+if status == :Optimal 
 
 edgeOrigin = []
 edgeDest = []
 
+cost = 0
 for i in keys(citiesDict)
-	for j in keys(citiesDict)
-		if i != j && getvalue(x[i, j]) > 0.01
-			append!(edgeOrigin, i)
-			append!(edgeDest, j)
-		end
-	end
+    for j in keys(citiesDict)
+        if i != j && getvalue(x[i, j]) > 0.01
+            append!(edgeOrigin, i)
+            append!(edgeDest, j)
+            cost += c[i,j]
+        end
+    end
 end
+
+println("cost: ", cost);
+
     graphplot(edgeOrigin, edgeDest, names=1:nCities,
     x=posX, y=posY, fontsize=11, m=:white, l=:black)
 
+    println("solução ótima!") 
 
-
+end
