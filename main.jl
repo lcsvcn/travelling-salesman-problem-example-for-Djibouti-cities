@@ -44,7 +44,7 @@ using Graphs
     citiesDict[37] = (12421.666700, 42895.555600)
     citiesDict[38] = (12645.000000, 42973.333300)
 
-    nCities= length(citiesDict)     
+nCities= length(citiesDict)     
 #matriz que armazena distâncias entre pontos
 c = zeros(nCities,nCities)
 
@@ -65,6 +65,7 @@ end
 
 model = Model(solver=GurobiSolver(TimeLimit=20, Threads=1,
           Heuristics=0.0, OutputFlag=0))
+
 @variable(model, x[i=1:nCities, j=1:nCities;i!=j],Bin)
 
 @objective(model, Min, sum(c[i,j] * x[i,j]
@@ -76,17 +77,17 @@ end
 
 for j in 1:nCities
     @constraint(model, sum(x[i,j] for i in 1: nCities if i != j) == 1)
-    end
+end
 
     function lazyConstraintsCallback(cb)
         g = simple_graph(nCities, is_directed=false)
         for i in 1:nCities, j in 1:nCities
-        if i!=j
-            if getvalue(x[i,j]) > 0.01
-            add_edge!(g,i,j) #constroi arestas
-            end
-        end
-        end
+   	     if i!=j
+        	    if getvalue(x[i,j]) > 0.01
+		            add_edge!(g,i,j) #constroi arestas
+	            end
+             end
+	end
 
         cc = connected_components(g) #encontra componentes conectados
         if length(cc) > 1
@@ -96,16 +97,16 @@ for j in 1:nCities
         subtourLhs = AffExpr()
         # Encontrando arestas do subciclo
         for i in minTour
-        for j in minTour
-            if i != j && getvalue(x[i, j]) > 0.01
-            subtourLhs += x[i, j]
-            end
-        end
+        	for j in minTour
+	            if i != j && getvalue(x[i, j]) > 0.01
+		            subtourLhs += x[i, j]
+	            end
+        	end
         end
         # Adicionando a restrição
         @lazyconstraint(cb,subtourLhs<=length(minTour)-1)
-    end
-end # Function
+	end
+end 
 
 addlazycallback(model, lazyConstraintsCallback)
 status = solve(model)
